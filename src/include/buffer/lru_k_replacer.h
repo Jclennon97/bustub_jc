@@ -15,11 +15,11 @@
 #include <cstddef>
 #include <limits>
 #include <list>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <memory>
 
 #include "common/config.h"
 #include "common/macros.h"
@@ -31,13 +31,11 @@ enum class AccessType { Unknown = 0, Get, Scan };
 class LRUKNode {
  public:
   explicit LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid) {}
-  void PushFront(size_t timestamp) {
-    history_.push_front(timestamp);
-  }
-  auto BackK() -> size_t{
+  void PushFront(size_t timestamp) { history_.push_front(timestamp); }
+  auto BackK() -> size_t {
     auto it = history_.begin();
-    for(size_t i = 0; i < k_ - 1; i++) {
-      if(it == history_.end()) {
+    for (size_t i = 0; i < k_ - 1; i++) {
+      if (it == history_.end()) {
         // 若少于k次访问则返回0
         return 0;
       }
@@ -45,15 +43,10 @@ class LRUKNode {
     }
     return *it;
   }
-  auto GetFid() -> frame_id_t {
-    return fid_;
-  }
-  auto GetEvictable() -> bool{
-    return is_evictable_;
-  }
-  void SetEvictable(bool value) {
-    is_evictable_ = value;
-  }
+  auto GetFid() -> frame_id_t { return fid_; }
+  auto GetEvictable() -> bool { return is_evictable_; }
+  void SetEvictable(bool value) { is_evictable_ = value; }
+
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
