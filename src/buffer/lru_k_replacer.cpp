@@ -127,7 +127,7 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
     return;
   }
   auto frame_ptr = frame_it->second;
-  BUSTUB_ENSURE(frame_ptr->GetEvictable() == false, "Remove is called on a non-evictable frame");
+  BUSTUB_ENSURE(frame_ptr->GetEvictable() == true, "Remove is called on a non-evictable frame");
   auto temp_it = temp_pool_map_.find(frame_id);
   if (temp_it != temp_pool_map_.end()) {
     temp_pool_.erase(temp_it->second);

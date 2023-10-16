@@ -33,12 +33,11 @@ class LRUKNode {
   explicit LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid) {}
   void PushFront(size_t timestamp) { history_.push_front(timestamp); }
   auto BackK() -> size_t {
+    if(history_.size() < k_) {
+      return 0;
+    }
     auto it = history_.begin();
     for (size_t i = 0; i < k_ - 1; i++) {
-      if (it == history_.end()) {
-        // 若少于k次访问则返回0
-        return 0;
-      }
       it++;
     }
     return *it;
