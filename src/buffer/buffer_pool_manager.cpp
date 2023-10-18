@@ -38,6 +38,7 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
 auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
+  std::lock_guard<std::mutex> lock(latch_);
   if (free_list_.empty() && replacer_->Size() == 0) {
     return nullptr;
   }
@@ -69,11 +70,14 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 }
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
+  std::lock_guard<std::mutex> lock(latch_);
   Page *page_ptr;
   frame_id_t new_frame_id;
   if (page_table_.find(page_id) != page_table_.end()) {
-    Page *page_ptr = &pages_[page_table_[page_id]];
+    frame_id_t frame_id = page_table_[page_id];
+    Page *page_ptr = &pages_[frame_id];
     page_ptr->pin_count_++;
+    replacer_->SetEvictable(frame_id, false);
     return page_ptr;
   }
   if (free_list_.empty() && replacer_->Size() == 0) {
@@ -104,6 +108,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
 }
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unused]] AccessType access_type) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
   if (page_table_.find(page_id) == page_table_.end()) {
     return false;
   }
@@ -115,11 +120,14 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
   if (page_ptr->GetPinCount() == 0) {
     replacer_->SetEvictable(page_table_[page_id], true);
   }
-  page_ptr->is_dirty_ = is_dirty;
+  if (!page_ptr->is_dirty_) {
+    page_ptr->is_dirty_ = is_dirty;
+  }
   return true;
 }
 
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
   if (page_table_.find(page_id) == page_table_.end()) {
     return false;
   }
@@ -130,6 +138,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
 }
 
 void BufferPoolManager::FlushAllPages() {
+  std::lock_guard<std::mutex> lock(latch_);
   for (auto it : page_table_) {
     Page *page_ptr = &pages_[it.first];
     disk_manager_->WritePage(it.first, page_ptr->GetData());
@@ -138,6 +147,7 @@ void BufferPoolManager::FlushAllPages() {
 }
 
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  std::lock_guard<std::mutex> lock(latch_);
   if (page_table_.find(page_id) == page_table_.end()) {
     return true;
   }
@@ -160,7 +170,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
 auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
 
 auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
-  Page *page_ptr = FetchPage(page_id);
+  auto page_ptr = FetchPage(page_id);
   return {this, page_ptr};
 }
 
@@ -168,9 +178,8 @@ auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
   if (page_table_.find(page_id) == page_table_.end()) {
     return {this, nullptr};
   }
-  Page *page_ptr = &pages_[page_table_[page_id]];
+  auto page_ptr = FetchPage(page_id);
   page_ptr->RLatch();
-  FetchPage(page_id);
   return ReadPageGuard{this, page_ptr};
 }
 
@@ -178,19 +187,16 @@ auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
   if (page_table_.find(page_id) == page_table_.end()) {
     return {this, nullptr};
   }
-  Page *page_ptr = &pages_[page_table_[page_id]];
+  auto page_ptr = FetchPage(page_id);
   page_ptr->WLatch();
-  FetchPage(page_id);
   return WritePageGuard{this, page_ptr};
 }
 
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard {
-  std::lock_guard<std::mutex> lock(latch_);
-  NewPage(page_id);
+  auto page_ptr = NewPage(page_id);
   if (page_id == nullptr) {
     return {this, nullptr};
   }
-  Page *page_ptr = &pages_[page_table_[*page_id]];
   return BasicPageGuard{this, page_ptr};
 }
 

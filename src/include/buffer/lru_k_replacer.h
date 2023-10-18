@@ -33,7 +33,7 @@ class LRUKNode {
   explicit LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid) {}
   void PushFront(size_t timestamp) { history_.push_front(timestamp); }
   auto BackK() -> size_t {
-    if(history_.size() < k_) {
+    if (history_.size() < k_) {
       return 0;
     }
     auto it = history_.begin();
