@@ -61,11 +61,11 @@ class BasicPageGuard {
 
   auto PageId() -> page_id_t { return page_->GetPageId(); }
 
-  auto GetData() -> const char * { return page_->GetData(); }
+  auto GetData() -> char * { return page_->GetData(); }
 
   template <class T>
-  auto As() -> const T * {
-    return reinterpret_cast<const T *>(GetData());
+  auto As() -> T * {
+    return reinterpret_cast<T *>(GetData());
   }
 
   auto GetDataMut() -> char * {
@@ -138,7 +138,7 @@ class ReadPageGuard {
   auto GetData() -> const char * { return guard_.GetData(); }
 
   template <class T>
-  auto As() -> const T * {
+  auto As() -> T * {
     return guard_.As<T>();
   }
 
@@ -198,7 +198,7 @@ class WritePageGuard {
   auto GetData() -> const char * { return guard_.GetData(); }
 
   template <class T>
-  auto As() -> const T * {
+  auto As() -> T * {
     return guard_.As<T>();
   }
 

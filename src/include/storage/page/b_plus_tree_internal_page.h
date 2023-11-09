@@ -13,7 +13,9 @@
 #include <queue>
 #include <string>
 
+#include "common/config.h"
 #include "storage/page/b_plus_tree_page.h"
+#include "storage/page/page.h"
 
 namespace bustub {
 
@@ -68,6 +70,17 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   /**
    *
+   * @return Index i which KeyAt(i) <= key < KetAt(i + 1)
+   */
+  auto GetKeyIndex(const KeyType &key, KeyComparator comparator_) const -> int;
+
+  void CreatNewRoot(const KeyType &key, page_id_t left_id, page_id_t right_id);
+
+  void Insert(const KeyType &key, page_id_t right_id, KeyComparator comparator_);
+
+  auto Split(B_PLUS_TREE_INTERNAL_PAGE_TYPE *) -> KeyType;
+  /**
+   *
    * @param index the index
    * @return the value at the index
    */
@@ -100,6 +113,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   }
 
  private:
+  page_id_t page_id_;
   // Flexible array member for page data.
   MappingType array_[0];
 };

@@ -74,6 +74,9 @@ class BPlusTree {
 
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *txn = nullptr) -> bool;
+  void InsertIntoParent(const BPlusTreePage *old_page, const KeyType &risenkey, const BPlusTreePage *sbling_page,
+                        Context *ctx);
+  auto StartNewTree(const KeyType &key, const ValueType &value) -> bool;
 
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *txn);
@@ -81,8 +84,10 @@ class BPlusTree {
   // Return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
+  auto FindLeafPage(const KeyType &key) -> LeafPage *;
+
   // Return the page id of the root node
-  auto GetRootPageId() -> page_id_t;
+  auto GetRootPageId() const -> page_id_t;
 
   // Index iterator
   auto Begin() -> INDEXITERATOR_TYPE;

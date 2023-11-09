@@ -175,18 +175,12 @@ auto BufferPoolManager::FetchPageBasic(page_id_t page_id) -> BasicPageGuard {
 }
 
 auto BufferPoolManager::FetchPageRead(page_id_t page_id) -> ReadPageGuard {
-  if (page_table_.find(page_id) == page_table_.end()) {
-    return {this, nullptr};
-  }
   auto page_ptr = FetchPage(page_id);
   page_ptr->RLatch();
   return ReadPageGuard{this, page_ptr};
 }
 
 auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
-  if (page_table_.find(page_id) == page_table_.end()) {
-    return {this, nullptr};
-  }
   auto page_ptr = FetchPage(page_id);
   page_ptr->WLatch();
   return WritePageGuard{this, page_ptr};
