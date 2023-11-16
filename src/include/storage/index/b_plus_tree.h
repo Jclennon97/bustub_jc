@@ -26,6 +26,7 @@
 #include "storage/page/b_plus_tree_header_page.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page_guard.h"
 
 namespace bustub {
@@ -85,6 +86,10 @@ class BPlusTree {
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
   auto FindLeafPage(const KeyType &key) -> LeafPage *;
+  auto FindLeafPageWrite(const KeyType &key, Context *ctx) -> LeafPage *;
+  auto MergeOrRedistribute(WritePageGuard* page_guard, Context *ctx) -> bool;
+  auto RootAdjust(WritePageGuard* root_page_guard, Context *ctx) -> bool;
+  auto FindSibling(WritePageGuard* page_guard, WritePageGuard& sibling_page_guard, Context *ctx) -> bool;
 
   // Return the page id of the root node
   auto GetRootPageId() const -> page_id_t;

@@ -79,6 +79,12 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void Insert(const KeyType &key, page_id_t right_id, KeyComparator comparator_);
 
   auto Split(B_PLUS_TREE_INTERNAL_PAGE_TYPE *) -> KeyType;
+
+  void MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE* recipient, int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE* parent_page);
+
+  auto MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType;
+  auto MoveEndTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType;
+  void Remove(int index);
   /**
    *
    * @param index the index

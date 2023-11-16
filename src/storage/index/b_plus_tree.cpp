@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 #include <optional>
 #include <sstream>
@@ -14,6 +15,7 @@
 #include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page.h"
 #include "storage/page/page_guard.h"
+#include "type/value.h"
 
 namespace bustub {
 
@@ -97,24 +99,8 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     StartNewTree(key, value);
     return true;
   }
-  WritePageGuard header_page_guard = bpm_->FetchPageWrite(header_page_id_);
-  auto header_page = header_page_guard.AsMut<BPlusTreeHeaderPage>();
-  ctx.root_page_id_ = header_page->root_page_id_;
-  ctx.header_page_ = std::move(header_page_guard);
-  // 往下走找到叶节点
-  WritePageGuard root_page_guard = bpm_->FetchPageWrite(header_page->root_page_id_);
-  ctx.write_set_.push_front(std::move(root_page_guard));
-  auto cur_page = ctx.write_set_.back().As<BPlusTreePage>();
-  while (!cur_page->IsLeafPage()) {
-    auto internal_node = reinterpret_cast<InternalPage *>(cur_page);
-    int index = internal_node->GetKeyIndex(key, comparator_);
-    page_id_t next_page_id = internal_node->ValueAt(index);
-    WritePageGuard next_node_guard = bpm_->FetchPageWrite(next_page_id);
-    ctx.write_set_.push_back(std::move(next_node_guard));
-    cur_page = ctx.write_set_.back().As<BPlusTreePage>();
-  }
-  auto leaf_page = reinterpret_cast<LeafPage *>(cur_page);
-  WritePageGuard leaf_page_guard = std::move(ctx.write_set_.back());
+  auto leaf_page = FindLeafPageWrite(key, &ctx);
+  auto leaf_page_guard = std::move(ctx.write_set_.back());
   ctx.write_set_.pop_back();
   if (!leaf_page->Insert(key, value, comparator_)) {
     return false;
@@ -242,7 +228,164 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   // Declaration of context instance.
   Context ctx;
-  (void)ctx;
+  if(IsEmpty()) { return; }
+  // 找到叶节点，并沿路将所有writeguard加入ctx
+  LeafPage* leaf_page = FindLeafPageWrite(key, &ctx);
+  auto leaf_page_guard = std::move(ctx.write_set_.back());
+  ctx.write_set_.pop_back();
+  // 在叶节点删除record
+  if(!leaf_page->RemoveRecord(key, comparator_)) { return; }
+  // 如果叶子节点size < min_size
+  if(leaf_page->GetSize() < leaf_page->GetMinSize()) {
+    MergeOrRedistribute(&leaf_page_guard, &ctx);
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::MergeOrRedistribute(WritePageGuard* page_guard, Context *ctx) -> bool {
+  auto page_tmp = page_guard->AsMut<BPlusTreePage>();
+  if(ctx->IsRootPage(page_tmp->GetPageId())) {
+    return RootAdjust(page_guard, ctx);
+  }
+  WritePageGuard sibling_page_guard;
+  bool page_prev_sibling = FindSibling(page_guard, sibling_page_guard, ctx);
+  WritePageGuard parent_page_guard = std::move(ctx->write_set_.back());
+  ctx->write_set_.pop_back();
+  auto parent_page = parent_page_guard.AsMut<InternalPage>();
+  if(page_tmp->IsLeafPage()) {
+    auto page = page_guard->AsMut<LeafPage>();
+    auto sibling_page = sibling_page_guard.AsMut<LeafPage>();
+    if(page->GetSize() + sibling_page->GetSize() < page->GetMaxSize()) {
+      if(page_prev_sibling) {
+        std::swap(page, sibling_page);
+      }
+      int remove_index = parent_page->ValueIndex(page->GetPageId());
+      page->MoveAll(sibling_page);
+      page_id_t page_id = page->GetPageId();
+      page_guard->Drop();
+      if(!bpm_->DeletePage(page_id)) {
+        assert("delete page failed!");
+      }
+      sibling_page_guard.Drop();
+      parent_page->Remove(remove_index);
+      if(parent_page->GetSize() < parent_page->GetMinSize()) {
+        return MergeOrRedistribute(&parent_page_guard, ctx);
+      }
+      return true;
+    }
+    int node_in_parent_index = parent_page->ValueIndex(page->GetPageId());
+    if(node_in_parent_index == 0) {
+      auto key = sibling_page->MoveFrontTo(page);
+      parent_page->SetKeyAt(1, key);
+    } else {
+      auto key = sibling_page->MoveEndTo(page);
+      parent_page->SetKeyAt(node_in_parent_index, key);
+    }
+    sibling_page_guard.Drop();
+    page_guard->Drop();
+  } else {
+    auto page = page_guard->AsMut<InternalPage>();
+    auto sibling_page = sibling_page_guard.AsMut<InternalPage>();
+    if(page->GetSize() + sibling_page->GetSize() <= page->GetMaxSize()) {
+      if(page_prev_sibling) {
+        std::swap(page, sibling_page);
+      }
+      int remove_index = parent_page->ValueIndex(page->GetPageId());
+      page->MoveAll(sibling_page, remove_index, parent_page);
+      page_id_t page_id = page->GetPageId();
+      page_guard->Drop();
+      if(!bpm_->DeletePage(page_id)) {
+        assert("delete page failed!");
+      }
+      sibling_page_guard.Drop();
+      parent_page->Remove(remove_index);
+      if(parent_page->GetSize() < parent_page->GetMinSize()) {
+        return MergeOrRedistribute(&parent_page_guard, ctx);
+      }
+      return true;
+    }
+    int node_in_parent_index = parent_page->ValueIndex(page->GetPageId());
+    if(node_in_parent_index == 0) {
+      auto parent_key = parent_page->KeyAt(1);
+      auto key = sibling_page->MoveFrontTo(page, parent_key);
+      parent_page->SetKeyAt(1, key);
+    } else {
+      auto parent_key = parent_page->KeyAt(node_in_parent_index);
+      auto key = sibling_page->MoveEndTo(page, parent_key);
+      parent_page->SetKeyAt(node_in_parent_index, key);
+    }
+    sibling_page_guard.Drop();
+    page_guard->Drop();
+    return false;
+  }
+  return true;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindSibling(WritePageGuard* page_guard, WritePageGuard& sibling_page_guard, Context *ctx) -> bool {
+  auto page = page_guard->As<BPlusTreePage>();
+  auto parent_page = ctx->write_set_.back().As<InternalPage>();
+  int index = parent_page->ValueIndex(page->GetPageId());
+  if(index == -1) {
+    assert("internal node 查找失败");
+  }
+  int sibling_index = index == 0 ? index + 1 : index - 1;
+  page_id_t sibling_page_id = parent_page->ValueAt(sibling_index);
+  sibling_page_guard = bpm_->FetchPageWrite(sibling_page_id);
+  return index == 0;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::RootAdjust(WritePageGuard* root_page_guard, Context *ctx) -> bool {
+  auto root_page = root_page_guard->AsMut<BPlusTreePage>();
+  //根节点为叶节点，且键值对数量为0
+  if(root_page->IsLeafPage()) {
+    if(root_page->GetSize() == 0) {
+      root_page_guard->Drop();
+      if(!bpm_->DeletePage(root_page->GetPageId())) {
+        assert("delete page failed!");
+      }
+      auto header_page = ctx->header_page_->AsMut<BPlusTreeHeaderPage>();
+      header_page->root_page_id_ = INVALID_PAGE_ID;
+      return true;
+    }
+  } else {
+  //根节点为中间节点，且只有一个键值对
+    if(root_page->GetSize() == 1) {
+      auto internal_page = root_page_guard->AsMut<InternalPage>();
+      page_id_t new_root_id = internal_page->ValueAt(0);
+      root_page_guard->Drop();
+      if(!bpm_->DeletePage(root_page->GetPageId())) {
+        assert("delete page failed!");
+      }
+      auto header_page = ctx->header_page_->AsMut<BPlusTreeHeaderPage>();
+      header_page->root_page_id_ = new_root_id;
+    }
+  }
+  return false;
+}
+
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindLeafPageWrite(const KeyType &key, Context *ctx) -> LeafPage * {
+  WritePageGuard header_page_guard = bpm_->FetchPageWrite(header_page_id_);
+  auto header_page = header_page_guard.AsMut<BPlusTreeHeaderPage>();
+  ctx->root_page_id_ = header_page->root_page_id_;
+  ctx->header_page_ = std::move(header_page_guard);
+  // 往下走找到叶节点
+  WritePageGuard root_page_guard = bpm_->FetchPageWrite(header_page->root_page_id_);
+  ctx->write_set_.push_front(std::move(root_page_guard));
+  auto cur_page = ctx->write_set_.back().AsMut<BPlusTreePage>();
+  while (!cur_page->IsLeafPage()) {
+    auto internal_node = reinterpret_cast<InternalPage *>(cur_page);
+    int index = internal_node->GetKeyIndex(key, comparator_);
+    page_id_t next_page_id = internal_node->ValueAt(index);
+    WritePageGuard next_node_guard = bpm_->FetchPageWrite(next_page_id);
+    ctx->write_set_.push_back(std::move(next_node_guard));
+    cur_page = ctx->write_set_.back().AsMut<BPlusTreePage>();
+  }
+  auto leaf_page = reinterpret_cast<LeafPage *>(cur_page);
+  return leaf_page;
 }
 
 /*****************************************************************************
@@ -319,8 +462,8 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetRootPageId() const -> page_id_t {
   auto guard = bpm_->FetchPageRead(header_page_id_);
-  auto root_page = guard.As<BPlusTreeHeaderPage>();
-  return root_page->root_page_id_;
+  auto head_page = guard.As<BPlusTreeHeaderPage>();
+  return head_page->root_page_id_;
 }
 
 /*****************************************************************************

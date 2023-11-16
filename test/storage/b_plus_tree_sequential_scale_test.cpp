@@ -73,6 +73,33 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
     ASSERT_EQ(rids[0].GetSlotNum(), value);
   }
 
+  for (auto key : keys) {
+    index_key.SetFromInteger(key);
+    //std::cout << "删除" << key << std::endl;
+    tree.Remove(index_key, transaction);
+    //std::cout << tree.DrawBPlusTree() << std::endl;
+  }
+
+  int64_t size = 0;
+  bool is_present;
+
+  for (auto key : keys) {
+    rids.clear();
+    index_key.SetFromInteger(key);
+    is_present = tree.GetValue(index_key, &rids);
+
+    if (!is_present) {
+      EXPECT_NE(std::find(keys.begin(), keys.end(), key), keys.end());
+    } else {
+      EXPECT_EQ(rids.size(), 1);
+      EXPECT_EQ(rids[0].GetPageId(), 0);
+      EXPECT_EQ(rids[0].GetSlotNum(), key);
+      size = size + 1;
+    }
+  }
+
+  EXPECT_EQ(size, 0);
+
   bpm->UnpinPage(HEADER_PAGE_ID, true);
   delete transaction;
   delete bpm;
