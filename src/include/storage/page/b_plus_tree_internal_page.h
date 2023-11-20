@@ -80,10 +80,10 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   auto Split(B_PLUS_TREE_INTERNAL_PAGE_TYPE *) -> KeyType;
 
-  void MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE* recipient, int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE* parent_page);
+  void MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE *recipient, int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE *parent_page);
 
-  auto MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType;
-  auto MoveEndTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType;
+  auto MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *page, const KeyType &parent_key) -> KeyType;
+  auto MoveEndTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *page, const KeyType &parent_key) -> KeyType;
   void Remove(int index);
   /**
    *
@@ -119,7 +119,6 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   }
 
  private:
-  page_id_t page_id_;
   // Flexible array member for page data.
   MappingType array_[0];
 };

@@ -53,9 +53,6 @@ class BPlusTreePage {
   void SetSize(int size);
   void IncreaseSize(int amount);
 
-  auto GetPageId() const -> page_id_t;
-  void SetPageId(page_id_t page_id);
-
   auto GetMaxSize() const -> int;
   void SetMaxSize(int max_size);
   auto GetMinSize() const -> int;
@@ -65,7 +62,6 @@ class BPlusTreePage {
   IndexPageType page_type_ __attribute__((__unused__));
   int size_ __attribute__((__unused__));
   int max_size_ __attribute__((__unused__));
-  page_id_t page_id_;
 };
 
 }  // namespace bustub

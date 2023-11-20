@@ -84,7 +84,9 @@ TEST(BPlusTreeTests, InsertTest2) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
     index_key.SetFromInteger(key);
+    std::cout << "插入" << key << std::endl;
     tree.Insert(index_key, rid, transaction);
+    std::cout << tree.DrawBPlusTree() << std::endl;
   }
 
   std::vector<RID> rids;

@@ -66,9 +66,10 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto KetIndex(const KeyType &key, KeyComparator comparator_) -> int;
   auto ArrayIt(int index) -> const MappingType &;
   auto RemoveRecord(const KeyType &key, KeyComparator comparator_) -> bool;
-  void MoveAll(B_PLUS_TREE_LEAF_PAGE_TYPE* recipient);
-  auto MoveFrontTo(B_PLUS_TREE_LEAF_PAGE_TYPE* page) -> KeyType;
-  auto MoveEndTo(B_PLUS_TREE_LEAF_PAGE_TYPE* page) -> KeyType;
+  void MoveAll(B_PLUS_TREE_LEAF_PAGE_TYPE *recipient);
+  auto MoveFrontTo(B_PLUS_TREE_LEAF_PAGE_TYPE *page) -> KeyType;
+  auto MoveEndTo(B_PLUS_TREE_LEAF_PAGE_TYPE *page) -> KeyType;
+  void SetKeyValueAt(int index, const KeyType &key, const ValueType &value);
   /**
    * @brief for test only return a string representing all keys in
    * this leaf page formatted as "(key1,key2,key3,...)"

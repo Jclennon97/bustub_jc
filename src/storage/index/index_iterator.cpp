@@ -5,6 +5,7 @@
 
 #include "common/config.h"
 #include "storage/index/index_iterator.h"
+#include "storage/page/page_guard.h"
 
 namespace bustub {
 
@@ -13,8 +14,8 @@ namespace bustub {
  * set your own input parameters
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(LeafPage *leafPage, int index, BufferPoolManager *bpm)
-    : leaf_page_(leafPage), index_(index), bpm_(bpm) {}
+INDEXITERATOR_TYPE::IndexIterator(page_id_t leaf_page_id, LeafPage *leafPage, int index, BufferPoolManager *bpm)
+    : leaf_page_id_(leaf_page_id), leaf_page_(leafPage), index_(index), bpm_(bpm) {}
 
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
@@ -35,7 +36,9 @@ auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   index_++;
   if (index_ == leaf_page_->GetSize() && leaf_page_->GetNextPageId() != INVALID_PAGE_ID) {
     page_id_t next_page_id = leaf_page_->GetNextPageId();
-    auto next_page = bpm_->FetchPageBasic(next_page_id).As<LeafPage>();
+    auto next_page_guard = bpm_->FetchPageBasic(next_page_id);
+    auto next_page = next_page_guard.As<LeafPage>();
+    leaf_page_id_ = next_page_id;
     leaf_page_ = next_page;
     index_ = 0;
   }

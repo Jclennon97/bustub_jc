@@ -47,7 +47,7 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
   // create transaction
   auto *transaction = new Transaction(0);
 
-  int64_t scale = 5000;
+  int64_t scale = 50000;
   std::vector<int64_t> keys;
   for (int64_t key = 1; key < scale; key++) {
     keys.push_back(key);
@@ -72,12 +72,12 @@ TEST(BPlusTreeTests, ScaleTest) {  // NOLINT
     int64_t value = key & 0xFFFFFFFF;
     ASSERT_EQ(rids[0].GetSlotNum(), value);
   }
-
+  // std::cout << tree.DrawBPlusTree() << std::endl;
   for (auto key : keys) {
     index_key.SetFromInteger(key);
-    //std::cout << "删除" << key << std::endl;
+    // std::cout << "删除" << key << std::endl;
     tree.Remove(index_key, transaction);
-    //std::cout << tree.DrawBPlusTree() << std::endl;
+    // std::cout << tree.DrawBPlusTree() << std::endl;
   }
 
   int64_t size = 0;

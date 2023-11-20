@@ -16,7 +16,6 @@
 
 #include "common/config.h"
 #include "common/exception.h"
-#include "execution/executors/init_check_executor.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 
 namespace bustub {
@@ -115,8 +114,8 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, page_id_t right_
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int {
   int i;
-  for(i = 0; i < GetSize(); i++) {
-    if(array_[i].second == value) {
+  for (i = 0; i < GetSize(); i++) {
+    if (array_[i].second == value) {
       return i;
     }
   }
@@ -124,10 +123,11 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const ->
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE* recipient, int index, B_PLUS_TREE_INTERNAL_PAGE_TYPE* parent_page) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE *recipient, int index,
+                                             B_PLUS_TREE_INTERNAL_PAGE_TYPE *parent_page) {
   int start_index = recipient->GetSize();
   SetKeyAt(0, parent_page->KeyAt(index));
-  for(int i = 0; i < GetSize(); i++) {
+  for (int i = 0; i < GetSize(); i++) {
     recipient->array_[start_index + i] = array_[i];
   }
   recipient->IncreaseSize(GetSize());
@@ -137,17 +137,18 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAll(B_PLUS_TREE_INTERNAL_PAGE_TYPE* rec
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int index) {
-  for(int i = index; i < GetSize() - 1; i++) {
+  for (int i = index; i < GetSize() - 1; i++) {
     array_[i] = array_[i + 1];
   }
   IncreaseSize(-1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *page, const KeyType &parent_key)
+    -> KeyType {
   page->array_[page->GetSize()] = array_[0];
   page->array_[page->GetSize()].first = parent_key;
-  for(int i = 1; i < GetSize(); i++) {
+  for (int i = 1; i < GetSize(); i++) {
     array_[i - 1] = array_[i];
   }
   IncreaseSize(-1);
@@ -155,10 +156,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE*
   return array_[0].first;
 }
 
-
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE* page, const KeyType &parent_key) -> KeyType {
-  for(int i = page->GetSize() - 1; i >= 0; i--) {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *page, const KeyType &parent_key)
+    -> KeyType {
+  for (int i = page->GetSize() - 1; i >= 0; i--) {
     page->array_[i + 1] = page->array_[i];
   }
   page->array_[0] = array_[GetSize() - 1];

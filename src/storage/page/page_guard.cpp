@@ -51,6 +51,7 @@ ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept {
 auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & {
   if (this != &that) {
     if (this->guard_.page_ != nullptr) {
+      this->guard_.page_->RUnlatch();
       this->guard_.bpm_->UnpinPage(this->guard_.page_->GetPageId(), this->guard_.is_dirty_);
     }
 

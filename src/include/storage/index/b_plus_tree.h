@@ -55,6 +55,9 @@ class Context {
   std::deque<ReadPageGuard> read_set_;
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
+
+  page_id_t page_id_{INVALID_PAGE_ID};
+  page_id_t sibling_id_{INVALID_PAGE_ID};
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -85,11 +88,11 @@ class BPlusTree {
   // Return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn = nullptr) -> bool;
 
-  auto FindLeafPage(const KeyType &key) -> LeafPage *;
-  auto FindLeafPageWrite(const KeyType &key, Context *ctx) -> LeafPage *;
-  auto MergeOrRedistribute(WritePageGuard* page_guard, Context *ctx) -> bool;
-  auto RootAdjust(WritePageGuard* root_page_guard, Context *ctx) -> bool;
-  auto FindSibling(WritePageGuard* page_guard, WritePageGuard& sibling_page_guard, Context *ctx) -> bool;
+  void FindLeafPage(const KeyType &key, ReadPageGuard &leaf_page_guard);
+  auto FindLeafPageWriteInsertOrDelete(const KeyType &key, Context *ctx, bool is_insert) -> LeafPage *;
+  auto MergeOrRedistribute(WritePageGuard *page_guard, Context *ctx) -> bool;
+  auto RootAdjust(WritePageGuard *root_page_guard, Context *ctx) -> bool;
+  auto FindSibling(WritePageGuard *page_guard, WritePageGuard &sibling_page_guard, Context *ctx) -> bool;
 
   // Return the page id of the root node
   auto GetRootPageId() const -> page_id_t;
