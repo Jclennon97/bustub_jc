@@ -495,16 +495,16 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   if (IsEmpty()) {
     throw std::exception();
   }
-  ReadPageGuard tmp;
-  ReadPageGuard head_page_guard = bpm_->FetchPageRead(header_page_id_);
+  BasicPageGuard tmp;
+  BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
   auto head_page = head_page_guard.As<BPlusTreeHeaderPage>();
-  ReadPageGuard root_guard = bpm_->FetchPageRead(head_page->root_page_id_);
+  BasicPageGuard root_guard = bpm_->FetchPageBasic(head_page->root_page_id_);
   auto page = root_guard.As<BPlusTreePage>();
   tmp = std::move(root_guard);
   while (!page->IsLeafPage()) {
     auto internal_page = reinterpret_cast<InternalPage *>(page);
     auto first_page_id = internal_page->ValueAt(0);
-    ReadPageGuard page_guard = bpm_->FetchPageRead(first_page_id);
+    BasicPageGuard page_guard = bpm_->FetchPageBasic(first_page_id);
     tmp.Drop();
     tmp = std::move(page_guard);
     page = tmp.As<BPlusTreePage>();
@@ -522,17 +522,17 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
-  ReadPageGuard tmp;
-  ReadPageGuard head_page_guard = bpm_->FetchPageRead(header_page_id_);
+  BasicPageGuard tmp;
+  BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
   auto head_page = head_page_guard.As<BPlusTreeHeaderPage>();
-  ReadPageGuard root_guard = bpm_->FetchPageRead(head_page->root_page_id_);
+  BasicPageGuard root_guard = bpm_->FetchPageBasic(head_page->root_page_id_);
   auto page = root_guard.As<BPlusTreePage>();
   tmp = std::move(root_guard);
   while (!page->IsLeafPage()) {
     auto internal_page = reinterpret_cast<InternalPage *>(page);
     int index = internal_page->GetKeyIndex(key, comparator_);
     auto page_id = internal_page->ValueAt(index);
-    ReadPageGuard page_guard = bpm_->FetchPageRead(page_id);
+    BasicPageGuard page_guard = bpm_->FetchPageBasic(page_id);
     tmp.Drop();
     tmp = std::move(page_guard);
     page = tmp.As<BPlusTreePage>();
@@ -551,16 +551,16 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
-  ReadPageGuard tmp;
-  ReadPageGuard head_page_guard = bpm_->FetchPageRead(header_page_id_);
+  BasicPageGuard tmp;
+  BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
   auto head_page = head_page_guard.As<BPlusTreeHeaderPage>();
-  ReadPageGuard root_guard = bpm_->FetchPageRead(head_page->root_page_id_);
+  BasicPageGuard root_guard = bpm_->FetchPageBasic(head_page->root_page_id_);
   auto page = root_guard.As<BPlusTreePage>();
   tmp = std::move(root_guard);
   while (!page->IsLeafPage()) {
     auto internal_page = reinterpret_cast<InternalPage *>(page);
     auto first_page_id = internal_page->ValueAt(internal_page->GetSize() - 1);
-    ReadPageGuard page_guard = bpm_->FetchPageRead(first_page_id);
+    BasicPageGuard page_guard = bpm_->FetchPageBasic(first_page_id);
     tmp.Drop();
     tmp = std::move(page_guard);
     page = tmp.As<BPlusTreePage>();
