@@ -47,6 +47,8 @@ class TableIterator {
 
   auto operator++() -> TableIterator &;
 
+  void Increment() { ++(*this); }
+
  private:
   TableHeap *table_heap_;
   RID rid_;

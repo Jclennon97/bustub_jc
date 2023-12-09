@@ -27,10 +27,14 @@ class IndexIterator {
 
  public:
   // you may define your own constructor based on your member variables
+  IndexIterator() = default;
   explicit IndexIterator(page_id_t leaf_page_id, LeafPage *leafPage, int index, BufferPoolManager *bpm);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
+
+  bool is_empty_;
+  auto IsEmpty() -> bool { return is_empty_; }
 
   auto operator*() -> const MappingType &;
 

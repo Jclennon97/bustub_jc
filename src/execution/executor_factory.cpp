@@ -35,6 +35,7 @@
 #include "execution/executors/update_executor.h"
 #include "execution/executors/values_executor.h"
 #include "execution/plans/filter_plan.h"
+#include "execution/plans/hash_join_plan.h"
 #include "execution/plans/mock_scan_plan.h"
 #include "execution/plans/projection_plan.h"
 #include "execution/plans/sort_plan.h"

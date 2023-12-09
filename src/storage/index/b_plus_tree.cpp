@@ -493,7 +493,9 @@ auto BPLUSTREE_TYPE::FindLeafPageWriteInsertOrDelete(const KeyType &key, Context
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   if (IsEmpty()) {
-    throw std::exception();
+    INDEXITERATOR_TYPE tmp = INDEXITERATOR_TYPE();
+    tmp.is_empty_ = true;
+    return tmp;
   }
   BasicPageGuard tmp;
   BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
@@ -522,6 +524,11 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
+  if (IsEmpty()) {
+    INDEXITERATOR_TYPE tmp = INDEXITERATOR_TYPE();
+    tmp.is_empty_ = true;
+    return tmp;
+  }
   BasicPageGuard tmp;
   BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
   auto head_page = head_page_guard.As<BPlusTreeHeaderPage>();
@@ -551,6 +558,11 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+  if (IsEmpty()) {
+    INDEXITERATOR_TYPE tmp = INDEXITERATOR_TYPE();
+    tmp.is_empty_ = true;
+    return tmp;
+  }
   BasicPageGuard tmp;
   BasicPageGuard head_page_guard = bpm_->FetchPageBasic(header_page_id_);
   auto head_page = head_page_guard.As<BPlusTreeHeaderPage>();

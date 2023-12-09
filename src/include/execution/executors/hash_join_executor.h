@@ -12,13 +12,55 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
+#include "common/util/hash_util.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
+
+namespace bustub {
+struct HashJoinKey {
+  std::vector<Value> attributes_;
+
+  /**
+   * Compares two hashjoin keys for equality.
+   * @param other the other hashjoin key to be compared with
+   * @return `true` if both hashjoin keys have equivalent hashjoin expressions, `false` otherwise
+   */
+  auto operator==(const HashJoinKey &other) const -> bool {
+    for (uint32_t i = 0; i < other.attributes_.size(); i++) {
+      if (attributes_[i].CompareEquals(other.attributes_[i]) != CmpBool::CmpTrue) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+}  // namespace bustub
+
+namespace std {
+
+/** Implements std::hash on HashJoinKey */
+template <>
+struct hash<bustub::HashJoinKey> {
+  auto operator()(const bustub::HashJoinKey &hash_key) const -> std::size_t {
+    size_t curr_hash = 0;
+    for (const auto &key : hash_key.attributes_) {
+      if (!key.IsNull()) {
+        curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&key));
+      }
+    }
+    return curr_hash;
+  }
+};
+
+}  // namespace std
 
 namespace bustub {
 
@@ -51,9 +93,31 @@ class HashJoinExecutor : public AbstractExecutor {
   /** @return The output schema for the join */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
+  auto MakeOutPutTuple(const Tuple &left_tuple, const Tuple &right_tuple) -> Tuple;
+  auto MakeMissOutPutTuple(const Tuple &left_tuple) -> Tuple;
+
  private:
+  /** @return The tuple as an HashJoinKey */
+  auto MakeLeftHashJoinKey(const Tuple *tuple) -> HashJoinKey {
+    std::vector<Value> keys;
+    for (const auto &expr : plan_->left_key_expressions_) {
+      keys.emplace_back(expr->Evaluate(tuple, left_child_->GetOutputSchema()));
+    }
+    return {keys};
+  }
+  auto MakeRightHashJoinKey(const Tuple *tuple) -> HashJoinKey {
+    std::vector<Value> keys;
+    for (const auto &expr : plan_->right_key_expressions_) {
+      keys.emplace_back(expr->Evaluate(tuple, right_child_->GetOutputSchema()));
+    }
+    return {keys};
+  }
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  std::unique_ptr<AbstractExecutor> left_child_;
+  std::unique_ptr<AbstractExecutor> right_child_;
+  std::unordered_multimap<HashJoinKey, Tuple> ht_{};
+  std::deque<Tuple> tmp_;
 };
 
 }  // namespace bustub

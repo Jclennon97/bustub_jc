@@ -343,6 +343,9 @@ set(P3_FILES
         "src/optimizer/optimizer_internal.cpp"
         "src/common/bustub_ddl.cpp"
         "src/include/execution/plans/index_scan_plan.h"
+        "src/include/execution/plans/hash_join_plan.h"
+        "src/execution/executor_factory.cpp"
+        "src/include/storage/table/table_iterator.h"
         ${P2_FILES}
 )
 

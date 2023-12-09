@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "execution/executor_context.h"
@@ -46,6 +47,8 @@ class SeqScanExecutor : public AbstractExecutor {
 
   /** @return The output schema for the sequential scan */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
+
+  std::unique_ptr<TableIterator> table_iterator_;
 
  private:
   /** The sequential scan plan node to be executed */
