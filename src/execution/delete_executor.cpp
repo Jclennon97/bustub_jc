@@ -42,10 +42,16 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     auto tuple_meta = table_info->table_->GetTupleMeta(child_rid);
     tuple_meta.is_deleted_ = true;
     table_info->table_->UpdateTupleMeta(tuple_meta, child_rid);
+    TableWriteRecord write_record{table_info->oid_, child_rid, table_info->table_.get()};
+    write_record.wtype_ = WType::DELETE;
+    exec_ctx_->GetTransaction()->AppendTableWriteRecord(write_record);
     for (auto index : table_indexes) {
       index->index_->DeleteEntry(
           child_tuple.KeyFromTuple(table_info->schema_, index->key_schema_, index->index_->GetKeyAttrs()), child_rid,
           exec_ctx_->GetTransaction());
+      IndexWriteRecord index_record{child_rid,   table_info->oid_,  WType::DELETE,
+                                    child_tuple, index->index_oid_, exec_ctx_->GetCatalog()};
+      exec_ctx_->GetTransaction()->AppendIndexWriteRecord(index_record);
     }
     ++count_;
   }

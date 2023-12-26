@@ -15,6 +15,7 @@
 #include <memory>
 #include <vector>
 
+#include "common/rid.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/seq_scan_plan.h"
@@ -44,6 +45,7 @@ class SeqScanExecutor : public AbstractExecutor {
    * @return `true` if a tuple was produced, `false` if there are no more tuples
    */
   auto Next(Tuple *tuple, RID *rid) -> bool override;
+  auto NextHelper(Tuple *tuple, RID *rid) -> bool;
 
   /** @return The output schema for the sequential scan */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
@@ -53,5 +55,41 @@ class SeqScanExecutor : public AbstractExecutor {
  private:
   /** The sequential scan plan node to be executed */
   const SeqScanPlanNode *plan_;
+  void LockRow(RID *rid) {
+    auto txn = exec_ctx_->GetTransaction();
+    auto table_info = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
+    if (exec_ctx_->IsDelete()) {
+      try {
+        exec_ctx_->GetLockManager()->LockRow(txn, LockManager::LockMode::EXCLUSIVE, table_info->oid_, *rid);
+      } catch (TransactionAbortException &) {
+        throw ExecutionException("lockRow failed!");
+      }
+    } else {
+      if (!txn->IsRowExclusiveLocked(table_info->oid_, *rid) &&
+          txn->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
+        try {
+          exec_ctx_->GetLockManager()->LockRow(txn, LockManager::LockMode::SHARED, table_info->oid_, *rid);
+        } catch (TransactionAbortException &) {
+          throw ExecutionException("lockRow failed!");
+        }
+      }
+    }
+  }
+  void UnlockSRow() {
+    auto txn = exec_ctx_->GetTransaction();
+    auto table_info = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
+    if (!exec_ctx_->IsDelete() && txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+      try {
+        if (txn->GetSharedRowLockSet()->find(table_info->oid_) != txn->GetSharedRowLockSet()->end()) {
+          const auto row_lock_set = txn->GetSharedRowLockSet()->at(table_info->oid_);
+          for (const RID &row_rid : row_lock_set) {
+            exec_ctx_->GetLockManager()->UnlockRow(txn, table_info->oid_, row_rid, true);
+          }
+        }
+      } catch (TransactionAbortException &) {
+        throw ExecutionException("unlockRow failed!");
+      }
+    }
+  }
 };
 }  // namespace bustub
